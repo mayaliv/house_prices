@@ -6,21 +6,20 @@ import seaborn as sns
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import Imputer
-from sklearn.model_selection import cross_val_predict
-from sklearn.pipeline import FeatureUnion
-from sklearn.preprocessing import FunctionTransformer
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import ShuffleSplit
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.cross_validation import KFold
 from sklearn.linear_model import Ridge
-from sklearn.linear_model import RidgeClassifierCV
 from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import ElasticNetCV
+import sklearn.metrics
+from sklearn.metrics import mean_squared_error
+from sklearn.ensemble import RandomForestRegressor
+
+
 
 #Define the file names
 training_data_file="train.csv"
@@ -29,6 +28,44 @@ real_data_file="test.csv"
 #import the dataset
 train_data=pd.read_csv(training_data_file)
 real_data=pd.read_csv(real_data_file)
+
+#1. Bedroom number
+train_data['BedroomAbvGr'].value_counts().plot(kind='bar')
+plt.title('Number of rooms')
+plt.xlabel('Bedrooms')
+plt.ylabel('Count')
+sns.despine()
+
+plt.savefig("Bedroom_number.png")
+plt.close()
+
+
+#2. plot salesprice vs sqft
+plt.scatter(train_data["SalePrice"], train_data["LotArea"])
+plt.title('Price vs SqFt')
+plt.xlabel('Price')
+plt.ylabel("Area")
+#plt.show()
+plt.savefig("salesprice_vs_sqft.png")
+plt.close()
+
+#3. plot salesprice vs bedrooms
+plt.scatter(train_data['BedroomAbvGr'],train_data['SalePrice'])
+plt.title('Price_vs_Bedrooms')
+plt.xlabel('Bedrooms')
+plt.ylabel("Price")
+#plt.show()
+plt.savefig("salesprice_vs_bedrooms.png")
+plt.close()
+
+#4. plot salesprice vs Year Built
+plt.scatter(train_data['YearBuilt'],train_data['SalePrice'])
+plt.title('Price vs Bedrooms')
+plt.xlabel('Year Built')
+plt.ylabel("Price")
+#plt.show()
+plt.savefig("salesprice_vs_Year_Built.png")
+plt.close()
 
 #set y as the target
 y=train_data['SalePrice']
@@ -64,20 +101,6 @@ X = pd.concat([X, Texts_data], axis=1)
 X.to_csv('out.csv',index=False)
 y.to_csv('yout.csv',index=False)
 
-# assigning the linear regresion model
-reg=LinearRegression()
-#
-shuffle = KFold(len(X), n_folds=5, shuffle=True, random_state=0)
-#cv = ShuffleSplit(n_splits=10, test_size=0.3, random_state=42)
-cv_scores = cross_val_score(reg,X,y,cv=shuffle)
-#
-# print(cv_scores)
-# print("Accuracy: %0.2f (+/- %0.2f)" % (cv_scores.mean(), cv_scores.std() * 2))
-# predicted = cross_val_predict(reg, X, y, cv=shuffle)
-# print(predicted)
-
-
-#
 # # Split using to train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.33,random_state=22)
 #
@@ -92,13 +115,42 @@ print(score)
 #
 
 
-modelCV = RidgeCV(alphas = [0.1, 0.01, 0.001,0.0001],cv=5)
-modelCV.fit(X,y)
+modelCV = RidgeCV(alphas = [0.1, 0.01, 0.001,0.0001],cv=5,normalize=True)
+modelCV.fit(X, y)
 pred_cv=modelCV.predict(X)
-scorecv=modelCV.score(X,y)
+scorecv=modelCV.score(X, y)
+mean_squared_error(y, pred_cv)
 
 print('RidgeCV')
 print(scorecv)
 #print(pred_cv)
 #
+
+
+regr = ElasticNetCV(alphas=[0.1, 0.01, 0.001,0.0001], copy_X=True, cv=5, eps=0.001, fit_intercept=True,
+       l1_ratio=0.5, max_iter=1000, n_alphas=100, n_jobs=1,
+       normalize=True, positive=False, precompute='auto', random_state=0,
+       selection='cyclic', tol=0.0001, verbose=0)
+regr.fit(X, y)
+print('ElasticNetCV')
+#print(regr.alpha_)
+#print(regr.intercept_)
+pred_enet_cv=regr.predict(X)
+#print(pred_enet_cv)
+score_enet_cv=regr.score(X, y)
+print(score_enet_cv)
+
+regr_rf = RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=2,
+           max_features='auto', max_leaf_nodes=None,
+           min_impurity_decrease=0.0, min_impurity_split=None,
+           min_samples_leaf=1, min_samples_split=10,
+           min_weight_fraction_leaf=0.0, n_estimators=10, n_jobs=1,
+           oob_score=False, random_state=0, verbose=0, warm_start=False)
+regr_rf.fit(X, y)
+pred_rf=regr.predict(X)
+
+score_rf=regr_rf.score(X, y)
+print('RandomForestRegressor')
+#print(regr_rf.feature_importances_)
+print(score_rf)
 
