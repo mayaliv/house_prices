@@ -1,25 +1,20 @@
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score
+
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import Imputer
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import ShuffleSplit
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import StandardScaler
-from sklearn.cross_validation import KFold
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import RidgeCV
-from sklearn.linear_model import ElasticNetCV
-import sklearn.metrics
 from sklearn.metrics import mean_squared_error
-from sklearn.ensemble import RandomForestRegressor
-
-
+from sklearn.preprocessing import Imputer
+from sklearn.preprocessing import MinMaxScaler
+import xgboost as xgb
+from sklearn.model_selection import train_test_split, GridSearchCV
+from xgboost import XGBRegressor
+import statsmodels.api as sm
+import numpy as np
+from sklearn.metrics import r2_score
 
 #Define the file names
 training_data_file="train.csv"
@@ -106,7 +101,7 @@ X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.33,random_st
 #
 #
 clf = Ridge(alpha=1.0, normalize=True)
-clf.fit(X_train, y_train)
+results=clf.fit(X_train, y_train)
 pred=clf.predict(X_test)
 score=clf.score(X_test, y_test)
 print('Ridge')
@@ -115,11 +110,12 @@ print(score)
 #
 
 
+
 modelCV = RidgeCV(alphas = [0.1, 0.01, 0.001,0.0001],cv=5,normalize=True)
-modelCV.fit(X, y)
-pred_cv=modelCV.predict(X)
-scorecv=modelCV.score(X, y)
-mean_squared_error(y, pred_cv)
+modelCV.fit(X_train, y_train)
+pred_cv=modelCV.predict(X_test)
+scorecv=modelCV.score(X_test, y_test)
+mean_squared_error(y_test, pred_cv)
 
 print('RidgeCV')
 print(scorecv)
@@ -131,13 +127,13 @@ regr = ElasticNetCV(alphas=[0.1, 0.01, 0.001,0.0001], copy_X=True, cv=5, eps=0.0
        l1_ratio=0.5, max_iter=1000, n_alphas=100, n_jobs=1,
        normalize=True, positive=False, precompute='auto', random_state=0,
        selection='cyclic', tol=0.0001, verbose=0)
-regr.fit(X, y)
+regr.fit(X_train, y_train)
 print('ElasticNetCV')
 #print(regr.alpha_)
 #print(regr.intercept_)
-pred_enet_cv=regr.predict(X)
+pred_enet_cv=regr.predict(X_test)
 #print(pred_enet_cv)
-score_enet_cv=regr.score(X, y)
+score_enet_cv=regr.score(X_test, y_test)
 print(score_enet_cv)
 
 regr_rf = RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=2,
@@ -146,11 +142,24 @@ regr_rf = RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=2,
            min_samples_leaf=1, min_samples_split=10,
            min_weight_fraction_leaf=0.0, n_estimators=10, n_jobs=1,
            oob_score=False, random_state=0, verbose=0, warm_start=False)
-regr_rf.fit(X, y)
-pred_rf=regr.predict(X)
+regr_rf.fit(X_train, y_train)
+pred_rf=regr.predict(X_test)
 
-score_rf=regr_rf.score(X, y)
+score_rf=regr_rf.score(X_test, y_test)
 print('RandomForestRegressor')
 #print(regr_rf.feature_importances_)
 print(score_rf)
 
+
+xgb_model = xgb.XGBRegressor()
+xgb_reg = GridSearchCV(xgb_model,
+                   {'max_depth': [2,4,6],
+                    'n_estimators': [50,100,200]}, verbose=1)
+xgb_reg.fit(X_train, y_train)
+pred_xgb=xgb_reg.best_estimator_.predict(X_test)
+print('xgb.XGBRegressor')
+print(xgb_reg.best_score_)
+print(xgb_reg.best_params_)
+xgb_model.fit(X_train,y_train)
+#pred_xgb = xgb_model.predict(data=X_test)
+print(r2_score(y_test, pred_xgb))
